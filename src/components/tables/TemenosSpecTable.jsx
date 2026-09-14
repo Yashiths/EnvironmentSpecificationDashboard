@@ -3,15 +3,23 @@ import { useData } from '../../context/DataContext';
 import { Modal } from '../common/Modal';
 import { ExportPdfButton } from '../common/ExportPdfButton';
 import { Edit, Layers, Plus, Trash2 } from 'lucide-react';
+import { smibEnvironmentData } from '../../../mockData.js';
 
 const toRows = (clientData) => {
-  if (Array.isArray(clientData.applicationTemenosSpecs)) {
+  if (Array.isArray(clientData.applicationTemenosSpecs) && clientData.applicationTemenosSpecs.length > 0) {
     return clientData.applicationTemenosSpecs;
   }
 
-  return Object.entries(clientData.appSpecs || {}).map(([parameter, value]) => ({
+  const appRows = Object.entries(clientData.appSpecs || {}).map(([parameter, value]) => ({
     parameter,
     value
+  }));
+
+  if (appRows.length > 0) return appRows;
+
+  return smibEnvironmentData.applicationTemenosSpecs.map(({ parameter }) => ({
+    parameter,
+    value: 'N/A'
   }));
 };
 

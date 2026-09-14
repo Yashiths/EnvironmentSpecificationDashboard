@@ -3,10 +3,22 @@ import { useData } from '../../context/DataContext';
 import { Modal } from '../common/Modal';
 import { Edit, Database } from 'lucide-react';
 import { ExportPdfButton } from '../common/ExportPdfButton';
+import { smibEnvironmentData } from '../../../mockData.js';
+
+const getDefaultDatabaseRows = () => smibEnvironmentData.databaseSpecs.map(({ parameter }) => ({
+  parameter,
+  value: 'N/A'
+}));
+
+const getDatabaseRows = (clientData) => (
+  Array.isArray(clientData.dbSpecs) && clientData.dbSpecs.length > 0
+    ? clientData.dbSpecs
+    : getDefaultDatabaseRows()
+);
 
 export const DbSpecTable = ({ readOnly = false }) => {
   const { currentClientData, updateDbSpecs, activeClient } = useData();
-  const dbSpecs = currentClientData.dbSpecs || [];
+  const dbSpecs = getDatabaseRows(currentClientData);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState([...dbSpecs]);
