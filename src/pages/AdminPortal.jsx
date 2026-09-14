@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { SimpleHeader } from '../components/layout/SimpleHeader';
 import { TabBar } from '../components/layout/TabBar';
 
-import { ClientInfoTable } from '../components/tables/ClientInfoTable';
+import { ClientInfo } from '../components/ClientInfo';
 import { InfraSpecTable } from '../components/tables/InfraSpecTable';
 import { TemenosSpecTable } from '../components/tables/TemenosSpecTable';
 import { DbSpecTable } from '../components/tables/DbSpecTable';
 import { IntegrationSpecTable } from '../components/tables/IntegrationSpecTable';
-import { IncidentsView } from '../components/views/IncidentsView';
+import { IncidentRegister } from '../components/IncidentRegister';
 import { UserManagement } from '../components/admin/UserManagement';
 import { ClientManagement } from '../components/admin/ClientManagement';
 import { AuditLogs } from '../components/admin/AuditLogs';
@@ -18,7 +18,7 @@ export const AdminPortal = () => {
   const renderActiveTable = () => {
     switch (activeTab) {
       case 'client-info':
-        return <ClientInfoTable readOnly={false} />;
+        return <ClientInfo readOnly={false} />;
       case 'infrastructure':
         return <InfraSpecTable readOnly={false} />;
       case 'app-specs':
@@ -28,7 +28,7 @@ export const AdminPortal = () => {
       case 'integrations':
         return <IntegrationSpecTable readOnly={false} />;
       case 'incidents':
-        return <IncidentsView readOnly={false} />;
+        return <IncidentRegister readOnly={false} />;
       case 'user-management':
         return <UserManagement />;
       case 'client-management':
@@ -36,7 +36,7 @@ export const AdminPortal = () => {
       case 'audit-logs':
         return <AuditLogs />;
       default:
-        return <ClientInfoTable readOnly={false} />;
+        return <ClientInfo readOnly={false} />;
     }
   };
 

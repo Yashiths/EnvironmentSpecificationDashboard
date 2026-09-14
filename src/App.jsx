@@ -7,8 +7,7 @@ import { useAuth } from './context/AuthContext';
 
 import { UserPortal } from './pages/UserPortal';
 import { AdminPortal } from './pages/AdminPortal';
-import { UserLoginPage } from './pages/UserLoginPage';
-import { AdminLoginPage } from './pages/AdminLoginPage';
+import { Login } from './pages/Login';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { UserManagement } from './components/admin/UserManagement';
 import { ClientManagement } from './components/admin/ClientManagement';
@@ -45,10 +44,10 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/login" element={<UserLoginPage />} />
+              <Route path="/login" element={<Login />} />
 
               {/* Dedicated Admin Portal Routes (Editable Table Viewer) */}
-              <Route path="/admin/login" element={<AdminLoginPage />} />
+              <Route path="/admin/login" element={<Login admin />} />
               <Route
                 path="/admin"
                 element={

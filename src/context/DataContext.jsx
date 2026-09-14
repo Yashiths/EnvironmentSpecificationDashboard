@@ -17,8 +17,13 @@ const normalizeClientInfo = (rows) => {
     country: values.Country || 'N/A',
     site: values.Site || 'N/A',
     environment: values.Environment || 'N/A',
+    environmentType: values['Environment Type'] || 'N/A',
+    drSite: values['DR Site'] || 'N/A',
     goLiveDate: values['Go-Live Date'] || 'N/A',
+    lastReviewed: values['Last Reviewed'] || 'N/A',
+    nextReviewDate: values['Next Review Date'] || 'N/A',
     owner: values['Environment Owner'] || 'N/A',
+    applicationOwner: values['Application Owner'] || 'N/A',
     supportContact: values['Application Owner'] || 'N/A',
     licenseTier: values['Environment Type'] || 'N/A'
   };
@@ -31,8 +36,13 @@ const createSmibClientData = () => ({
     country: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Country'),
     site: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Site'),
     environment: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Environment'),
+    environmentType: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Environment Type'),
+    drSite: getFieldValue(smibEnvironmentData.clientSiteInfo, 'DR Site'),
     goLiveDate: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Go-Live Date'),
+    lastReviewed: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Last Reviewed'),
+    nextReviewDate: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Next Review Date'),
     owner: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Environment Owner'),
+    applicationOwner: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Application Owner'),
     supportContact: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Application Owner'),
     licenseTier: getFieldValue(smibEnvironmentData.clientSiteInfo, 'Environment Type')
   },
@@ -68,6 +78,7 @@ const createSmibClientData = () => ({
     status: item.status
   })),
   incidents: smibEnvironmentData.productionIncidents.map((incident) => ({
+    ...incident,
     id: incident.incidentId,
     title: incident.summary,
     severity: incident.severity,
@@ -207,7 +218,21 @@ export const DataProvider = ({ children }) => {
 
   // 1. Client Info Update
   const updateClientInfo = async (updatedInfo) => {
-    await persistRecord('clientSiteInfo', 'clientSiteInfo', updatedInfo);
+    const fieldMap = {
+      client: 'Client',
+      country: 'Country',
+      site: 'Site',
+      environment: 'Environment',
+      environmentType: 'Environment Type',
+      drSite: 'DR Site',
+      goLiveDate: 'Go-Live Date',
+      lastReviewed: 'Last Reviewed',
+      nextReviewDate: 'Next Review Date',
+      owner: 'Environment Owner',
+      applicationOwner: 'Application Owner'
+    };
+    const rows = Object.entries(fieldMap).map(([key, field]) => ({ field, value: updatedInfo[key] || 'N/A' }));
+    await persistRecord('clientSiteInfo', 'clientSiteInfo', rows);
     setData(prev => ({
       ...prev,
       [activeClient]: {

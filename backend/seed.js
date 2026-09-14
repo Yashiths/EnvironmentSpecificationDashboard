@@ -23,11 +23,26 @@ export const seedSuperAdminUser = async () => {
     role: 'Super Admin'
   });
 
-  console.log('Created default Super Admin user: superadmin@sysenact.com');
+  console.log('Created default Super Admin user: superadmin');
   return superAdmin;
 };
 
 export const seedAdminUser = seedSuperAdminUser;
+
+export const seedStandardUser = async () => {
+  const existingUser = await User.findOne({ username: 'user' });
+  if (existingUser) return existingUser;
+
+  const user = await User.create({
+    username: 'user',
+    email: 'user@sysenact.com',
+    password: await bcrypt.hash('AAbank@11.', 12),
+    role: 'User'
+  });
+
+  console.log('Created default user: user');
+  return user;
+};
 
 const rowsOrFallback = (rows, fallback) => Array.isArray(rows) && rows.length > 0 ? rows : [fallback];
 
@@ -56,6 +71,7 @@ export const connectAndSeedAdmin = async () => {
 
     await User.deleteMany({});
     await seedSuperAdminUser();
+    await seedStandardUser();
     await seedSpecifications();
     return true;
   } finally {
