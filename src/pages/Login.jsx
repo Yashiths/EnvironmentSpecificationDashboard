@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -36,7 +36,14 @@ export const Login = ({ admin = false }) => {
             {error && <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
             <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">Sign In <ArrowRight className="h-4 w-4" /></button>
           </form>
-          <p className="mt-5 text-center text-xs text-slate-500">Use the account provisioned for your dashboard role.</p>
+          <div className="mt-5 border-t border-slate-200 pt-5 text-center">
+            <Link
+              to={admin ? '/login' : '/admin/login'}
+              className="cursor-pointer text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+            >
+              {admin ? 'Move to User Login' : 'Move to Admin Login'}
+            </Link>
+          </div>
         </div>
       </motion.section>
     </main>

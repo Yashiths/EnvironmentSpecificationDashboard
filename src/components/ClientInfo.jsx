@@ -22,6 +22,12 @@ export const ClientInfo = ({ readOnly = false }) => {
   const { currentClientData, updateClientInfo, activeClient } = useData();
   const { isAdmin } = useAuth();
   const clientInfo = currentClientData.clientInfo || {};
+  const clientSiteInfo = Array.isArray(currentClientData.clientSiteInfo)
+    ? currentClientData.clientSiteInfo
+    : fields.map(([field, key]) => ({
+      field,
+      value: clientInfo[key] || 'N/A'
+    }));
   const canEdit = !readOnly && isAdmin;
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState(clientInfo);
@@ -55,13 +61,27 @@ export const ClientInfo = ({ readOnly = false }) => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {fields.map(([label, key]) => (
-          <div key={key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
-            <dd className="mt-2 break-words text-sm font-semibold text-slate-900">{clientInfo[key] || 'N/A'}</dd>
-          </div>
-        ))}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-700">
+              <tr>
+                <th scope="col" className="w-1/3 border-r border-slate-200 px-5 py-3.5 font-semibold">
+                  Field / Parameter
+                </th>
+                <th scope="col" className="px-5 py-3.5 font-semibold">Value</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {clientSiteInfo.map((row, index) => (
+                <tr key={row.field} className={index % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}>
+                  <td className="border-r border-slate-200 px-5 py-3.5 font-medium text-slate-700">{row.field}</td>
+                  <td className="px-5 py-3.5 font-medium text-slate-900">{row.value || 'N/A'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title={`Edit Client Information for ${activeClient}`}>
