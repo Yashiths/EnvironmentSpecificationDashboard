@@ -7,7 +7,7 @@ import { InfraSpecTable } from '../components/tables/InfraSpecTable';
 import { TemenosSpecTable } from '../components/tables/TemenosSpecTable';
 import { DbSpecTable } from '../components/tables/DbSpecTable';
 import { IntegrationSpecTable } from '../components/tables/IntegrationSpecTable';
-import { IncidentRegister } from '../components/IncidentRegister';
+import { ProductionIncidentRegister as IncidentRegister } from '../components/ProductionIncidentRegister';
 
 export const UserPortal = () => {
   const [activeTab, setActiveTab] = useState('client-info');

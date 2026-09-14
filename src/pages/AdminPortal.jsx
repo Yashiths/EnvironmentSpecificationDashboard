@@ -7,7 +7,7 @@ import { InfraSpecTable } from '../components/tables/InfraSpecTable';
 import { TemenosSpecTable } from '../components/tables/TemenosSpecTable';
 import { DbSpecTable } from '../components/tables/DbSpecTable';
 import { IntegrationSpecTable } from '../components/tables/IntegrationSpecTable';
-import { IncidentRegister } from '../components/IncidentRegister';
+import { ProductionIncidentRegister as IncidentRegister } from '../components/ProductionIncidentRegister';
 import { UserManagement } from '../components/admin/UserManagement';
 import { ClientManagement } from '../components/admin/ClientManagement';
 import { AuditLogs } from '../components/admin/AuditLogs';

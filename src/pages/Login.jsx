@@ -27,7 +27,7 @@ export const Login = ({ admin = false }) => {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 text-slate-900">
       <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
-        <div className="mb-6 text-center"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200"><ShieldCheck className="h-7 w-7" /></div><h1 className="text-2xl font-bold">SMIB Environment Dashboard</h1><p className="mt-1 text-sm text-slate-600">{admin ? 'Administrator sign in' : 'Client and operations sign in'}</p></div>
+        <div className="mb-6 text-center"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200"><ShieldCheck className="h-7 w-7" /></div><h1 className="text-2xl font-bold">Core Banking Environment Dashboard</h1><p className="mt-1 text-sm text-slate-600">{admin ? 'Administrator sign in to the enterprise environment monitoring portal' : 'Client and operations sign in to the enterprise environment monitoring portal'}</p></div>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-8">
           <div className="mb-6 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"><LockKeyhole className="h-4 w-4 text-indigo-600" /> {admin ? 'Admin access' : 'Read-only client access'}</div>
           <form onSubmit={submit} className="space-y-4">
