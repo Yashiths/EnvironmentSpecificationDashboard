@@ -3,9 +3,27 @@ import { Specification } from '../models/Specification.js';
 import { createDefaultSiteSpecs } from '../../mockData.js';
 import { logActivity } from '../middleware/auditMiddleware.js';
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const exactMatch = (value) => new RegExp(`^${escapeRegex(value)}$`, 'i');
+
+const duplicateCodeResponse = (res, existingClient) => res.status(409).json({
+  message: existingClient?.status === 'Inactive'
+    ? `An inactive site with code ${existingClient.code} already exists. Activate the existing site instead of adding it again.`
+    : `A site with code ${existingClient?.code || 'provided'} already exists.`,
+  existingClient: existingClient?.status === 'Inactive'
+    ? {
+      _id: existingClient._id,
+      name: existingClient.name,
+      code: existingClient.code,
+      country: existingClient.country,
+      status: existingClient.status
+    }
+    : undefined
+});
+
 export const listClients = async (_req, res) => {
   try {
-      const clients = await ClientSite.find().sort({ name: 1 });
+    const clients = await ClientSite.find().sort({ name: 1 });
     return res.json({ clients });
   } catch (error) {
     console.error(error);
@@ -16,11 +34,15 @@ export const listClients = async (_req, res) => {
 export const createClient = async (req, res) => {
   try {
     const { name, code, country } = req.body;
-    if (!name || !code || !country) {
+    if (![name, code, country].every(value => typeof value === 'string' && value.trim())) {
       return res.status(400).json({ message: 'Client name, site code, and country are required.' });
     }
 
-    const client = await ClientSite.create({ name, code, country });
+    const normalizedCode = code.trim().toUpperCase();
+    const existingClient = await ClientSite.findOne({ code: exactMatch(normalizedCode) });
+    if (existingClient) return duplicateCodeResponse(res, existingClient);
+
+    const client = await ClientSite.create({ name: name.trim(), code: normalizedCode, country: country.trim() });
     const defaults = createDefaultSiteSpecs();
     const records = [
       { category: 'clientSiteInfo', sectionKey: 'clientSiteInfo', recordId: 'clientSiteInfo', data: {
@@ -32,12 +54,26 @@ export const createClient = async (req, res) => {
       { sectionKey: 'infrastructureSpecs', category: 'infrastructureSpecs', recordId: 'infrastructureSpecs', data: defaults.infrastructureSpecs.map((data, index) => ({ ...data, id: `INF-${client.code}-${index + 1}`, spec: data.specification })) },
       { sectionKey: 'integrationSpecs', category: 'integrationSpecs', recordId: 'integrationSpecs', data: defaults.integrationSpecs.map((data, index) => ({ ...data, id: `INT-${client.code}-${index + 1}`, name: data.integration })) }
     ];
-    await Specification.insertMany(records.map(record => ({ client: client.code, ...record })));
+    const existingSpecifications = await Specification.find({ client: exactMatch(client.code) })
+      .select('category recordId')
+      .lean();
+    const existingKeys = new Set(existingSpecifications.map(({ category, recordId }) => `${category}:${recordId}`));
+    const missingRecords = records.filter(record => !existingKeys.has(`${record.category}:${record.recordId}`));
+    if (missingRecords.length > 0) {
+      await Specification.bulkWrite(missingRecords.map(record => ({
+        updateOne: {
+          filter: { client: client.code, category: record.category, recordId: record.recordId },
+          update: { $setOnInsert: { client: client.code, ...record } },
+          upsert: true
+        }
+      })));
+    }
     await logActivity('CLIENT_SITE_CREATED', req.user, client.code, { name: client.name, country: client.country }, req);
     return res.status(201).json({ client });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(409).json({ message: 'That site code already exists.' });
+      const existingClient = await ClientSite.findOne({ code: exactMatch(String(req.body.code || '').trim().toUpperCase()) });
+      return duplicateCodeResponse(res, existingClient);
     }
     console.error(error);
     return res.status(500).json({ message: 'Unable to create banking client.' });

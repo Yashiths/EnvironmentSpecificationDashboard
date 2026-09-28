@@ -6,9 +6,10 @@ import { apiUrl } from '../../config/api';
 
 export const ClientManagement = () => {
   const { token } = useAuth();
-  const { clients, refreshClients } = useData();
+  const { clients, refreshClients, setActiveClient } = useData();
   const [formData, setFormData] = useState({ name: '', code: '', country: '' });
   const [message, setMessage] = useState('');
+  const [inactiveDuplicate, setInactiveDuplicate] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const request = async (url, options = {}) => {
@@ -17,7 +18,11 @@ export const ClientManagement = () => {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message || 'Request failed.');
+    if (!response.ok) {
+      const error = new Error(result.message || 'Request failed.');
+      error.details = result;
+      throw error;
+    }
     return result;
   };
 
@@ -25,13 +30,16 @@ export const ClientManagement = () => {
     event.preventDefault();
     setIsSaving(true);
     setMessage('');
+    setInactiveDuplicate(null);
     try {
-      await request('/api/clients', { method: 'POST', body: JSON.stringify(formData) });
+      const { client } = await request('/api/clients', { method: 'POST', body: JSON.stringify(formData) });
       setFormData({ name: '', code: '', country: '' });
       await refreshClients();
+      setActiveClient(client._id);
       setMessage('Banking client created successfully.');
     } catch (error) {
       setMessage(error.message);
+      setInactiveDuplicate(error.details?.existingClient || null);
     } finally {
       setIsSaving(false);
     }
@@ -44,6 +52,9 @@ export const ClientManagement = () => {
         body: JSON.stringify({ status })
       });
       await refreshClients();
+      setInactiveDuplicate(null);
+      if (status === 'Active') setActiveClient(client._id);
+      setMessage(status === 'Active' ? `${client.name} activated.` : `${client.name} deactivated.`);
     } catch (error) {
       setMessage(error.message);
     }
@@ -89,7 +100,16 @@ export const ClientManagement = () => {
         <button disabled={isSaving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-60 md:col-span-3 md:justify-self-end">
           {isSaving ? 'Saving...' : 'Add Client Site'}
         </button>
-        {message && <p className="text-sm text-slate-600 dark:text-slate-300 md:col-span-3">{message}</p>}
+        {message && <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300 md:col-span-3">
+          <span>{message}</span>
+          {inactiveDuplicate && <button
+            type="button"
+            onClick={() => updateStatus(inactiveDuplicate, 'Active')}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-500"
+          >
+            <Power className="h-4 w-4" /> Activate existing site
+          </button>}
+        </div>}
       </form>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -105,7 +125,14 @@ export const ClientManagement = () => {
                 <td className="px-5 py-4">{client.country}</td>
                 <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${client.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{client.status}</span></td>
                 <td className="px-5 py-4 text-right">
-                  <button onClick={() => updateStatus(client, client.status === 'Active' ? 'Inactive' : 'Active')} className="mr-3 text-indigo-600 hover:text-indigo-800" title="Toggle status"><Power className="inline h-4 w-4" /></button>
+                  <button
+                    onClick={() => updateStatus(client, client.status === 'Active' ? 'Inactive' : 'Active')}
+                    className={`mr-3 inline-flex items-center gap-1 text-xs font-semibold ${client.status === 'Active' ? 'text-slate-500 hover:text-slate-700' : 'text-emerald-600 hover:text-emerald-800'}`}
+                    title={client.status === 'Active' ? `Deactivate ${client.name}` : `Activate ${client.name}`}
+                    aria-label={client.status === 'Active' ? `Deactivate ${client.name}` : `Activate ${client.name}`}
+                  >
+                    <Power className="h-4 w-4" />{client.status === 'Active' ? 'Deactivate' : 'Activate'}
+                  </button>
                   <button onClick={() => deleteClient(client)} className="text-rose-600 hover:text-rose-800" title="Delete client"><Trash2 className="inline h-4 w-4" /></button>
                 </td>
               </tr>
