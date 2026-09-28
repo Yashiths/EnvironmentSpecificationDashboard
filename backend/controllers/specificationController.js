@@ -1,7 +1,10 @@
 import { Specification, SPECIFICATION_CATEGORIES } from '../models/Specification.js';
+import { ClientSite } from '../models/ClientSite.js';
 import { logActivity } from '../middleware/auditMiddleware.js';
 
 const isValidCategory = (category) => SPECIFICATION_CATEGORIES.includes(category);
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const exactMatch = (value) => new RegExp(`^${escapeRegex(value)}$`, 'i');
 const sectionKeyByCategory = {
   clientSiteInfo: 'clientSiteInfo',
   productionIncidents: 'productionIncidents',
@@ -14,13 +17,22 @@ const sectionKeyByCategory = {
 export const listSpecifications = async (req, res) => {
   try {
     const { category } = req.params;
-    const client = req.query.client || 'SMIB';
+    const client = String(req.query.siteCode || req.query.client || 'SMIB').trim();
 
     if (!isValidCategory(category)) {
       return res.status(400).json({ message: 'Invalid specification category.' });
     }
 
-    const records = await Specification.find({ client, category }).sort({ createdAt: 1 });
+    const clientRecord = await ClientSite.findOne({
+      $or: [{ code: exactMatch(client) }, { name: exactMatch(client) }]
+    }).select('code name').lean();
+    const clientMatches = [client, clientRecord?.code, clientRecord?.name]
+      .filter(Boolean)
+      .map(exactMatch);
+    const records = await Specification.find({
+      client: { $in: clientMatches },
+      category
+    }).sort({ createdAt: 1 });
     return res.json({ records });
   } catch (error) {
     console.error(error);

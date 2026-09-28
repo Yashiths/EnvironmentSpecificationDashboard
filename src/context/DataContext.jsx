@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { INITIAL_MOCK_DATA } from '../data/mockData';
+import { CLIENTS, INITIAL_MOCK_DATA } from '../data/mockData';
 import { smibEnvironmentData } from '../mockData.js';
 import { apiUrl } from '../config/api';
 
@@ -106,9 +106,11 @@ export const DataProvider = ({ children }) => {
   const [data, setData] = useState(createInitialData);
   const [isLoading, setIsLoading] = useState(false);
 
-  const activeClientRecord = clients.find(client => client._id === activeClientId) || clients[0];
-  const activeClient = activeClientRecord?.code || 'SMIB';
-  const specificationClient = activeClient === 'SMIB-PROD' ? 'SMIB' : activeClient;
+  const activeClientRecord = clients.find(client => client._id === activeClientId || client.code === activeClientId);
+  const configuredClient = CLIENTS.find(client => client.id === activeClientId || client.code === activeClientId);
+  const siteCode = activeClientRecord?.code || configuredClient?.code || activeClientId || CLIENTS[0].code;
+  const activeClient = siteCode;
+  const specificationClient = siteCode;
   const currentClientData = data[activeClient] || data.SMIB;
 
   const notify = (type, message) => {
@@ -135,9 +137,9 @@ export const DataProvider = ({ children }) => {
     if (!response.ok) throw new Error(result.message || 'Unable to load clients.');
     setClients(result.clients);
     setActiveClientId(currentId => (
-      result.clients.some(client => client._id === currentId)
+      result.clients.some(client => client._id === currentId || client.code === currentId)
         ? currentId
-          : result.clients.find(client => client.code === 'SMIB' && client.status === 'Active')?._id
+          : result.clients.find(client => client.code === CLIENTS[0].code && client.status === 'Active')?._id
           || result.clients.find(client => client.status === 'Active')?._id
           || null
     ));
@@ -145,8 +147,10 @@ export const DataProvider = ({ children }) => {
   };
 
   const setActiveClient = (clientIdOrCode) => {
-    const selected = clients.find(client => client._id === clientIdOrCode || client.code === clientIdOrCode);
-    setActiveClientId(selected?._id || clientIdOrCode);
+    const configuredClient = CLIENTS.find(client => client.id === clientIdOrCode || client.code === clientIdOrCode);
+    const selectedCode = configuredClient?.code || clientIdOrCode;
+    const selected = clients.find(client => client._id === clientIdOrCode || client.code === selectedCode);
+    setActiveClientId(selected?._id || selectedCode);
   };
 
   useEffect(() => {
@@ -179,7 +183,7 @@ export const DataProvider = ({ children }) => {
       setIsLoading(true);
       try {
         const responses = await Promise.all(categories.map(category =>
-          apiRequest(`/api/specifications/${category}?client=${encodeURIComponent(activeClient)}`)
+          apiRequest(`/api/specifications/${category}?client=${encodeURIComponent(siteCode)}`)
         ));
         const records = Object.fromEntries(categories.map((category, index) => [category, responses[index].records]));
         const clientInfoData = records.clientSiteInfo[0]?.data;
