@@ -24,7 +24,7 @@ If this project is already connected to GitHub, use `git add .`, `git commit`, a
 4. Copy the driver connection string and replace its placeholders:
 
 ```text
-mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/env_spec_db?retryWrites=true&w=majority
+mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/env_db?retryWrites=true&w=majority
 ```
 
 ## 3. Deploy the backend to Render
@@ -36,7 +36,7 @@ mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/env_spec_db?retryWrites=true
 5. Add these environment variables:
 
 ```text
-MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/env_spec_db?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/env_db?retryWrites=true&w=majority
 JWT_SECRET=replace-with-a-long-random-secret
 CORS_ORIGINS=https://YOUR_VERCEL_DOMAIN.vercel.app
 ```

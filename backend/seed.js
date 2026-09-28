@@ -10,38 +10,46 @@ import { smibEnvironmentData } from '../mockData.js';
 const backendDirectory = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(backendDirectory, '.env') });
 
-const mongoURI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/env_spec_db';
+const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/env_db';
 
 export const seedSuperAdminUser = async () => {
-  const existingSuperAdmin = await User.findOne({ email: 'superadmin@sysenact.com' });
-  if (existingSuperAdmin) return existingSuperAdmin;
+  const email = 'superadmin@sysenact.com';
+  const result = await User.updateOne(
+    { email },
+    {
+      $setOnInsert: {
+        username: 'superadmin',
+        email,
+        password: await bcrypt.hash('Admin@123', 12),
+        role: 'Super Admin'
+      }
+    },
+    { upsert: true }
+  );
 
-  const superAdmin = await User.create({
-    username: 'superadmin',
-    email: 'superadmin@sysenact.com',
-    password: await bcrypt.hash('Admin@123', 12),
-    role: 'Super Admin'
-  });
-
-  console.log('Created default Super Admin user: superadmin');
-  return superAdmin;
+  if (result.upsertedCount) console.log('Created default Super Admin user: superadmin');
+  return User.findOne({ email });
 };
 
 export const seedAdminUser = seedSuperAdminUser;
 
 export const seedStandardUser = async () => {
-  const existingUser = await User.findOne({ username: 'user' });
-  if (existingUser) return existingUser;
+  const email = 'user@sysenact.com';
+  const result = await User.updateOne(
+    { email },
+    {
+      $setOnInsert: {
+        username: 'user',
+        email,
+        password: await bcrypt.hash('AAbank@11.', 12),
+        role: 'User'
+      }
+    },
+    { upsert: true }
+  );
 
-  const user = await User.create({
-    username: 'user',
-    email: 'user@sysenact.com',
-    password: await bcrypt.hash('AAbank@11.', 12),
-    role: 'User'
-  });
-
-  console.log('Created default user: user');
-  return user;
+  if (result.upsertedCount) console.log('Created default user: user');
+  return User.findOne({ email });
 };
 
 const rowsOrFallback = (rows, fallback) => Array.isArray(rows) && rows.length > 0 ? rows : [fallback];
@@ -56,8 +64,17 @@ const sectionDocuments = [
 ];
 
 export const seedSpecifications = async () => {
-  await Specification.deleteMany({});
-  await Specification.insertMany(sectionDocuments);
+  await Specification.bulkWrite(sectionDocuments.map((document) => ({
+    updateOne: {
+      filter: {
+        client: document.client,
+        category: document.category,
+        recordId: document.recordId
+      },
+      update: { $setOnInsert: document },
+      upsert: true
+    }
+  })));
   console.log(`Seeded ${sectionDocuments.length} SMIB dashboard sections.`);
 };
 
@@ -66,10 +83,9 @@ export const connectAndSeedAdmin = async () => {
 
   try {
     if (ownsConnection) {
-      await mongoose.connect(mongoURI);
+      await mongoose.connect(mongoURI, { dbName: 'env_db' });
     }
 
-    await User.deleteMany({});
     await seedSuperAdminUser();
     await seedStandardUser();
     await seedSpecifications();

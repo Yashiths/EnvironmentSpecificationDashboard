@@ -9,14 +9,14 @@ import specificationRoutes from './routes/specificationRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
-import { seedAdminUser, seedSpecifications, seedSuperAdminUser } from './seed.js';
+import { seedStandardUser, seedSpecifications, seedSuperAdminUser } from './seed.js';
 
 const backendDirectory = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(backendDirectory, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const mongoURI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/env_spec_db';
+const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/env_db';
 const allowedOrigins = new Set([
   'http://localhost:3001',
   'http://localhost:5173',
@@ -54,10 +54,10 @@ app.use((error, _req, res, _next) => {
 
 const startServer = async () => {
   try {
-    await mongoose.connect(mongoURI);
+    await mongoose.connect(mongoURI, { dbName: 'env_db' });
     console.log('✅ Connected to MongoDB Atlas');
-    await seedAdminUser();
     await seedSuperAdminUser();
+    await seedStandardUser();
     await seedSpecifications();
   } catch (error) {
     console.warn(`Warning: MongoDB connection unavailable. The API will start without database access. ${error.message}`);
