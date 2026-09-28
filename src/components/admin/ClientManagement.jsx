@@ -92,7 +92,13 @@ export const ClientManagement = () => {
               required
               value={formData[field]}
               placeholder={placeholder}
-              onChange={(event) => setFormData({ ...formData, [field]: event.target.value })}
+              onChange={(event) => {
+                setFormData({ ...formData, [field]: event.target.value });
+                if (field === 'code') {
+                  setMessage('');
+                  setInactiveDuplicate(null);
+                }
+              }}
               className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-normal text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </label>

@@ -9,7 +9,7 @@ import specificationRoutes from './routes/specificationRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
-import { seedStandardUser, seedSpecifications, seedSuperAdminUser } from './seed.js';
+import { seedClientSites, seedStandardUser, seedSpecifications, seedSuperAdminUser } from './seed.js';
 
 const backendDirectory = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(backendDirectory, '.env') });
@@ -58,6 +58,7 @@ const startServer = async () => {
     console.log('✅ Connected to MongoDB Atlas');
     await seedSuperAdminUser();
     await seedStandardUser();
+    await seedClientSites();
     await seedSpecifications();
   } catch (error) {
     console.warn(`Warning: MongoDB connection unavailable. The API will start without database access. ${error.message}`);

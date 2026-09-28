@@ -26,7 +26,8 @@ export const listSpecifications = async (req, res) => {
     const clientRecord = await ClientSite.findOne({
       $or: [{ code: exactMatch(client) }, { name: exactMatch(client) }]
     }).select('code name').lean();
-    const clientMatches = [client, clientRecord?.code, clientRecord?.name]
+    const legacySmibCodes = /^SMIB(?:-PROD)?$/i.test(client) ? ['SMIB', 'SMIB-PROD'] : [];
+    const clientMatches = [client, clientRecord?.code, clientRecord?.name, ...legacySmibCodes]
       .filter(Boolean)
       .map(exactMatch);
     const records = await Specification.find({

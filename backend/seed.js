@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { User } from './models/User.js';
+import { ClientSite } from './models/ClientSite.js';
 import { Specification } from './models/Specification.js';
 import { smibEnvironmentData } from '../mockData.js';
 
@@ -52,6 +53,22 @@ export const seedStandardUser = async () => {
   return User.findOne({ email });
 };
 
+const defaultClientSites = [
+  { name: 'State Mortgage & Investment Bank', code: 'SMIB', country: 'Sri Lanka', status: 'Active' },
+  { name: 'National Development Bank', code: 'NDB', country: 'Sri Lanka', status: 'Active' },
+  { name: 'National Banking Limited', code: 'NBL-ENTERPRISE', country: 'Switzerland', status: 'Active' },
+  { name: 'National Digital Banking Platform', code: 'NDBP-CLOUD', country: 'United Kingdom', status: 'Active' }
+];
+
+export const seedClientSites = async () => {
+  await Promise.all(defaultClientSites.map((site) => ClientSite.updateOne(
+    { code: site.code },
+    { $set: site },
+    { upsert: true }
+  )));
+  console.log(`Ensured ${defaultClientSites.length} default client sites.`);
+};
+
 const rowsOrFallback = (rows, fallback) => Array.isArray(rows) && rows.length > 0 ? rows : [fallback];
 
 const sectionDocuments = [
@@ -64,18 +81,22 @@ const sectionDocuments = [
 ];
 
 export const seedSpecifications = async () => {
-  await Specification.bulkWrite(sectionDocuments.map((document) => ({
-    updateOne: {
-      filter: {
-        client: document.client,
-        category: document.category,
-        recordId: document.recordId
-      },
-      update: { $setOnInsert: document },
-      upsert: true
-    }
-  })));
-  console.log(`Seeded ${sectionDocuments.length} SMIB dashboard sections.`);
+  const existingClientCodes = await Specification.distinct('client', {
+    client: /^SMIB(?:-PROD)?$/i
+  });
+  const specificationClient = existingClientCodes.find((code) => code.toUpperCase() === 'SMIB')
+    || existingClientCodes.find((code) => code.toUpperCase() === 'SMIB-PROD')
+    || 'SMIB';
+
+  await Promise.all(sectionDocuments.map((section) => {
+    const document = { ...section, client: specificationClient };
+    return Specification.updateOne(
+      { client: specificationClient, category: document.category, recordId: document.recordId },
+      { $setOnInsert: document },
+      { upsert: true }
+    );
+  }));
+  console.log(`Ensured ${sectionDocuments.length} SMIB dashboard sections for ${specificationClient}.`);
 };
 
 export const connectAndSeedAdmin = async () => {
@@ -88,6 +109,7 @@ export const connectAndSeedAdmin = async () => {
 
     await seedSuperAdminUser();
     await seedStandardUser();
+    await seedClientSites();
     await seedSpecifications();
     return true;
   } finally {

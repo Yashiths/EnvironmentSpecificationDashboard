@@ -32,6 +32,8 @@ export const listClients = async (_req, res) => {
 };
 
 export const createClient = async (req, res) => {
+  let clientCreated = false;
+
   try {
     const { name, code, country } = req.body;
     if (![name, code, country].every(value => typeof value === 'string' && value.trim())) {
@@ -43,6 +45,7 @@ export const createClient = async (req, res) => {
     if (existingClient) return duplicateCodeResponse(res, existingClient);
 
     const client = await ClientSite.create({ name: name.trim(), code: normalizedCode, country: country.trim() });
+    clientCreated = true;
     const defaults = createDefaultSiteSpecs();
     const records = [
       { category: 'clientSiteInfo', sectionKey: 'clientSiteInfo', recordId: 'clientSiteInfo', data: {
@@ -71,12 +74,14 @@ export const createClient = async (req, res) => {
     await logActivity('CLIENT_SITE_CREATED', req.user, client.code, { name: client.name, country: client.country }, req);
     return res.status(201).json({ client });
   } catch (error) {
-    if (error.code === 11000) {
+    if (error.code === 11000 && !clientCreated) {
       const existingClient = await ClientSite.findOne({ code: exactMatch(String(req.body.code || '').trim().toUpperCase()) });
-      return duplicateCodeResponse(res, existingClient);
+      if (existingClient) return duplicateCodeResponse(res, existingClient);
     }
     console.error(error);
-    return res.status(500).json({ message: 'Unable to create banking client.' });
+    return res.status(500).json({ message: clientCreated
+      ? 'The site was created, but its default specifications could not be completed.'
+      : 'Unable to create banking client.' });
   }
 };
 

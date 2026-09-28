@@ -1,7 +1,8 @@
 import { smibEnvironmentData } from '../../mockData.js';
 
 export const CLIENTS = [
-  { id: 'SMIB', name: 'SMIB (State Mortgage & Investment Bank)', code: 'SMIB-PROD', country: 'United States' },
+  { id: 'SMIB', name: 'State Mortgage & Investment Bank', code: 'SMIB', country: 'Sri Lanka' },
+  { id: 'NDB', name: 'National Development Bank', code: 'NDB', country: 'Sri Lanka' },
   { id: 'NBL', name: 'National Banking Limited', code: 'NBL-ENTERPRISE', country: 'Switzerland' },
   { id: 'NDBP', name: 'National Digital Banking Platform', code: 'NDBP-CLOUD', country: 'United Kingdom' }
 ];
