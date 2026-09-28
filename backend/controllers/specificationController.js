@@ -5,6 +5,15 @@ import { logActivity } from '../middleware/auditMiddleware.js';
 const isValidCategory = (category) => SPECIFICATION_CATEGORIES.includes(category);
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const exactMatch = (value) => new RegExp(`^${escapeRegex(value)}$`, 'i');
+const categoryAliases = {
+  'client-info': 'clientSiteInfo',
+  clientInfo: 'clientSiteInfo',
+  infrastructure: 'infrastructureSpecs',
+  application: 'applicationTemenosSpecs',
+  database: 'databaseSpecs',
+  integration: 'integrationSpecs',
+  incidents: 'productionIncidents'
+};
 const sectionKeyByCategory = {
   clientSiteInfo: 'clientSiteInfo',
   productionIncidents: 'productionIncidents',
@@ -16,7 +25,8 @@ const sectionKeyByCategory = {
 
 export const listSpecifications = async (req, res) => {
   try {
-    const { category } = req.params;
+    const requestedCategory = req.params.category || req.query.category;
+    const category = categoryAliases[requestedCategory] || requestedCategory;
     const client = String(req.query.siteCode || req.query.client || 'SMIB').trim();
 
     if (!isValidCategory(category)) {
@@ -30,10 +40,14 @@ export const listSpecifications = async (req, res) => {
     const clientMatches = [client, clientRecord?.code, clientRecord?.name, ...legacySmibCodes]
       .filter(Boolean)
       .map(exactMatch);
-    const records = await Specification.find({
+    const matchingRecords = await Specification.find({
       client: { $in: clientMatches },
       category
     }).sort({ createdAt: 1 });
+    const exactClientRecords = matchingRecords.filter(
+      (record) => record.client.toLowerCase() === client.toLowerCase()
+    );
+    const records = exactClientRecords.length > 0 ? exactClientRecords : matchingRecords;
     return res.json({ records });
   } catch (error) {
     console.error(error);

@@ -183,7 +183,7 @@ export const DataProvider = ({ children }) => {
       setIsLoading(true);
       try {
         const responses = await Promise.all(categories.map(category =>
-          apiRequest(`/api/specifications/${category}?client=${encodeURIComponent(siteCode)}`)
+          apiRequest(`/api/specifications?client=${encodeURIComponent(siteCode)}&category=${encodeURIComponent(category)}`)
         ));
         const records = Object.fromEntries(categories.map((category, index) => [category, responses[index].records]));
         const clientInfoData = records.clientSiteInfo[0]?.data;
@@ -195,6 +195,9 @@ export const DataProvider = ({ children }) => {
           ...prev,
           [activeClient]: {
             ...prev[activeClient],
+            clientSiteInfo: Array.isArray(clientInfoData)
+              ? clientInfoData
+              : prev[activeClient]?.clientSiteInfo,
             clientInfo: normalizeClientInfo(clientInfoData) || prev[activeClient]?.clientInfo,
             infrastructure: infrastructureData.map((item, index) => ({ ...item, id: item.id || `INF-${activeClient}-${index + 1}`, spec: item.spec || item.specification })),
             appSpecs: Array.isArray(applicationData)
@@ -241,6 +244,7 @@ export const DataProvider = ({ children }) => {
       ...prev,
       [activeClient]: {
         ...prev[activeClient],
+        clientSiteInfo: rows,
         clientInfo: {
           ...prev[activeClient]?.clientInfo,
           ...updatedInfo
