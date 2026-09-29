@@ -22,6 +22,11 @@ const sectionKeyByCategory = {
   databaseSpecs: 'databaseSpecs',
   integrationSpecs: 'integrationSpecs'
 };
+const rowCategories = new Set([
+  'infrastructureSpecs',
+  'integrationSpecs',
+  'productionIncidents'
+]);
 
 export const listSpecifications = async (req, res) => {
   try {
@@ -48,6 +53,23 @@ export const listSpecifications = async (req, res) => {
       (record) => record.client.toLowerCase() === client.toLowerCase()
     );
     const records = exactClientRecords.length > 0 ? exactClientRecords : matchingRecords;
+    const canonicalRecord = records.find((record) => record.recordId === category);
+    if (canonicalRecord) return res.json({ records: [canonicalRecord] });
+
+    if (rowCategories.has(category) && records.length > 0) {
+      return res.json({
+        records: [{
+          client: records[0].client,
+          category,
+          sectionKey: sectionKeyByCategory[category],
+          recordId: category,
+          data: records.flatMap((record) => (
+            Array.isArray(record.data) ? record.data : [record.data]
+          ))
+        }]
+      });
+    }
+
     return res.json({ records });
   } catch (error) {
     console.error(error);
@@ -57,22 +79,50 @@ export const listSpecifications = async (req, res) => {
 
 export const upsertSpecification = async (req, res) => {
   try {
-    const { id, client, category, recordId, data } = req.body;
+    const { client, category, data, operation } = req.body;
 
-    if (!client || !isValidCategory(category) || !recordId || data === undefined) {
-      return res.status(400).json({ message: 'Client, category, recordId, and data are required.' });
+    if (!client || !isValidCategory(category) || data === undefined) {
+      return res.status(400).json({ message: 'Client, category, and data are required.' });
     }
 
-    const filter = id
-      ? { _id: id }
-      : { client, category, recordId };
-    const record = await Specification.findOneAndUpdate(
-      filter,
-      { client, category, sectionKey: sectionKeyByCategory[category], recordId, data },
-      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
-    );
+    const filter = { client, category, recordId: category };
+    let record;
+    if (operation === 'add') {
+      const parentRecord = await Specification.findOne(filter);
+      if (parentRecord) {
+        parentRecord.data.push(data);
+        parentRecord.markModified('data');
+        record = await parentRecord.save();
+      } else {
+        const legacyRecords = await Specification.find({
+          client,
+          category,
+          recordId: { $ne: category }
+        }).sort({ createdAt: 1 });
+        const existingRows = legacyRecords.flatMap((legacyRecord) => (
+          Array.isArray(legacyRecord.data) ? legacyRecord.data : [legacyRecord.data]
+        ));
+        record = await Specification.findOneAndUpdate(
+          filter,
+          {
+            client,
+            category,
+            sectionKey: sectionKeyByCategory[category],
+            recordId: category,
+            data: [...existingRows, data]
+          },
+          { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+        );
+      }
+    } else {
+      record = await Specification.findOneAndUpdate(
+        filter,
+        { client, category, sectionKey: sectionKeyByCategory[category], recordId: category, data },
+        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+      );
+    }
 
-    await logActivity('SPECIFICATION_UPDATED', req.user, `${client}/${category}/${recordId}`, { data }, req);
+    await logActivity('SPECIFICATION_UPDATED', req.user, `${client}/${category}`, { data }, req);
 
     return res.status(200).json({ record });
   } catch (error) {
@@ -83,16 +133,38 @@ export const upsertSpecification = async (req, res) => {
 
 export const deleteSpecification = async (req, res) => {
   try {
-    const { client, category } = req.query;
-    const record = /^[a-f\d]{24}$/i.test(req.params.id)
-      ? await Specification.findByIdAndDelete(req.params.id)
-      : await Specification.findOneAndDelete({
-        client,
-        category,
-        recordId: req.params.id
-      });
-    if (!record) return res.status(404).json({ message: 'Specification record not found.' });
-    await logActivity('SPECIFICATION_DELETED', req.user, `${record.client}/${record.category}/${record.recordId}`, {}, req);
+    const { client, category, rowIndex } = req.query;
+    if (!client || !isValidCategory(category)) {
+      return res.status(400).json({ message: 'Client and a valid category are required.' });
+    }
+
+    const record = await Specification.findOne({ client, category, recordId: category });
+    if (record && Array.isArray(record.data)) {
+      const index = Number(rowIndex);
+      const targetId = req.params.id;
+      const indexedRow = Number.isInteger(index) && index >= 0 ? record.data[index] : null;
+      const indexedRowId = indexedRow?.id || indexedRow?.incidentId;
+      const resolvedIndex = indexedRow && (!indexedRowId || indexedRowId === targetId)
+        ? index
+        : record.data.findIndex((row) => [row.id, row.incidentId].includes(targetId));
+      if (resolvedIndex < 0) {
+        return res.status(404).json({ message: 'Specification row not found.' });
+      }
+
+      const [deletedRow] = record.data.splice(resolvedIndex, 1);
+      record.markModified('data');
+      await record.save();
+      await logActivity('SPECIFICATION_DELETED', req.user, `${client}/${category}/${targetId}`, {}, req);
+      return res.json({ message: 'Specification deleted successfully.', record, deletedRow });
+    }
+
+    const legacyRecord = await Specification.findOneAndDelete({
+      client,
+      category,
+      recordId: req.params.id
+    });
+    if (!legacyRecord) return res.status(404).json({ message: 'Specification record not found.' });
+    await logActivity('SPECIFICATION_DELETED', req.user, `${client}/${category}/${legacyRecord.recordId}`, {}, req);
     return res.json({ message: 'Specification deleted successfully.' });
   } catch (error) {
     console.error(error);

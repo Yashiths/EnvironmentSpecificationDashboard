@@ -157,13 +157,13 @@ export const DataProvider = ({ children }) => {
     refreshClients().catch(error => notify('error', `Clients unavailable: ${error.message}`));
   }, []);
 
-  const persistRecord = async (category, recordId, record) => {
+  const persistRecord = async (category, recordId, record, operation) => {
     if (!token) return null;
     setIsLoading(true);
     try {
       const result = await apiRequest('/api/specifications', {
         method: 'POST',
-        body: JSON.stringify({ client: specificationClient, category, recordId, data: record })
+        body: JSON.stringify({ client: specificationClient, category, recordId, data: record, operation })
       });
       notify('success', 'Changes saved to MongoDB.');
       return result.record;
@@ -173,6 +173,16 @@ export const DataProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const persistCategoryData = async (category, categoryData) => {
+    if (!token) return true;
+    return Boolean(await persistRecord(category, category, categoryData));
+  };
+
+  const persistCategoryRow = async (category, row) => {
+    if (!token) return true;
+    return Boolean(await persistRecord(category, category, row, 'add'));
   };
 
   useEffect(() => {
@@ -260,26 +270,24 @@ export const DataProvider = ({ children }) => {
       id, component: 'N/A', spec: 'N/A', quantity: 'N/A', hostname: 'N/A', version: 'N/A', notes: 'N/A',
       customFields: [], ...newInfra
     };
+    const updatedRows = [...(currentClientData.infrastructure || []), fullInfra];
+    if (!await persistCategoryRow('infrastructureSpecs', fullInfra)) return;
     setData(prev => ({
       ...prev,
-      [activeClient]: {
-        ...prev[activeClient],
-        infrastructure: [...(prev[activeClient]?.infrastructure || []), fullInfra]
-      }
+      [activeClient]: { ...prev[activeClient], infrastructure: updatedRows }
     }));
-    await persistRecord('infrastructureSpecs', id, fullInfra);
   };
 
   const updateInfraSpec = async (id, updatedFields) => {
-    const updated = { ...(currentClientData.infrastructure || []).find(item => item.id === id), ...updatedFields };
-    await persistRecord('infrastructureSpecs', id, updated);
+    const updatedRows = (currentClientData.infrastructure || []).map(item => (
+      item.id === id ? { ...item, ...updatedFields } : item
+    ));
+    if (!await persistCategoryData('infrastructureSpecs', updatedRows)) return;
     setData(prev => ({
       ...prev,
       [activeClient]: {
         ...prev[activeClient],
-        infrastructure: (prev[activeClient]?.infrastructure || []).map(item =>
-          item.id === id ? { ...item, ...updatedFields } : item
-        )
+        infrastructure: updatedRows
       }
     }));
   };
@@ -287,9 +295,14 @@ export const DataProvider = ({ children }) => {
   const deleteInfraSpec = async (id) => {
     if (token) {
       try {
-        await apiRequest(`/api/specifications/${encodeURIComponent(id)}?client=${specificationClient}&category=infrastructureSpecs`, { method: 'DELETE' });
+        const rows = currentClientData.infrastructure || [];
+        const rowIndex = rows.findIndex(item => item.id === id);
+        await apiRequest(`/api/specifications/${encodeURIComponent(id)}?client=${encodeURIComponent(specificationClient)}&category=infrastructureSpecs&rowIndex=${rowIndex}`, { method: 'DELETE' });
         notify('success', 'Specification deleted.');
-      } catch (error) { notify('error', `Delete failed: ${error.message}`); }
+      } catch (error) {
+        notify('error', `Delete failed: ${error.message}`);
+        return;
+      }
     }
     setData(prev => ({
       ...prev,
@@ -302,7 +315,7 @@ export const DataProvider = ({ children }) => {
 
   // 3. Application Specs Update
   const updateAppSpecs = async (updatedAppSpecs) => {
-    await persistRecord('applicationTemenosSpecs', 'applicationTemenosSpecs', updatedAppSpecs);
+    if (!await persistCategoryData('applicationTemenosSpecs', updatedAppSpecs)) return;
     const updatedRows = Array.isArray(updatedAppSpecs) ? updatedAppSpecs : null;
     setData(prev => ({
       ...prev,
@@ -321,7 +334,7 @@ export const DataProvider = ({ children }) => {
 
   // 4. Database Specs Update
   const updateDbSpecs = async (newDbArray) => {
-    await persistRecord('databaseSpecs', 'databaseSpecs', newDbArray);
+    if (!await persistCategoryData('databaseSpecs', newDbArray)) return;
     setData(prev => ({
       ...prev,
       [activeClient]: {
@@ -335,26 +348,24 @@ export const DataProvider = ({ children }) => {
   const addIntegrationSpec = async (newInt) => {
     const id = `INT-${activeClient}-${Math.floor(10 + Math.random() * 90)}`;
     const fullInt = { id, status: 'Active', ...newInt };
+    const updatedRows = [...(currentClientData.integrations || []), fullInt];
+    if (!await persistCategoryRow('integrationSpecs', fullInt)) return;
     setData(prev => ({
       ...prev,
-      [activeClient]: {
-        ...prev[activeClient],
-        integrations: [...(prev[activeClient]?.integrations || []), fullInt]
-      }
+      [activeClient]: { ...prev[activeClient], integrations: updatedRows }
     }));
-    await persistRecord('integrationSpecs', id, fullInt);
   };
 
   const updateIntegrationSpec = async (id, updatedFields) => {
-    const updated = { ...(currentClientData.integrations || []).find(item => item.id === id), ...updatedFields };
-    await persistRecord('integrationSpecs', id, updated);
+    const updatedRows = (currentClientData.integrations || []).map(item => (
+      item.id === id ? { ...item, ...updatedFields } : item
+    ));
+    if (!await persistCategoryData('integrationSpecs', updatedRows)) return;
     setData(prev => ({
       ...prev,
       [activeClient]: {
         ...prev[activeClient],
-        integrations: (prev[activeClient]?.integrations || []).map(item =>
-          item.id === id ? { ...item, ...updatedFields } : item
-        )
+        integrations: updatedRows
       }
     }));
   };
@@ -362,9 +373,14 @@ export const DataProvider = ({ children }) => {
   const deleteIntegrationSpec = async (id) => {
     if (token) {
       try {
-        await apiRequest(`/api/specifications/${encodeURIComponent(id)}?client=${specificationClient}&category=integrationSpecs`, { method: 'DELETE' });
+        const rows = currentClientData.integrations || [];
+        const rowIndex = rows.findIndex(item => item.id === id);
+        await apiRequest(`/api/specifications/${encodeURIComponent(id)}?client=${encodeURIComponent(specificationClient)}&category=integrationSpecs&rowIndex=${rowIndex}`, { method: 'DELETE' });
         notify('success', 'Integration deleted.');
-      } catch (error) { notify('error', `Delete failed: ${error.message}`); }
+      } catch (error) {
+        notify('error', `Delete failed: ${error.message}`);
+        return;
+      }
     }
     setData(prev => ({
       ...prev,
@@ -379,26 +395,24 @@ export const DataProvider = ({ children }) => {
   const addIncident = async (newIncident) => {
     const id = `INC-${activeClient}-${Date.now()}`;
     const fullIncident = { id, reportedDate: new Date().toISOString(), ...newIncident };
+    const updatedRows = [...(currentClientData.incidents || []), fullIncident];
+    if (!await persistCategoryRow('productionIncidents', fullIncident)) return;
     setData(prev => ({
       ...prev,
-      [activeClient]: {
-        ...prev[activeClient],
-        incidents: [...(prev[activeClient]?.incidents || []), fullIncident]
-      }
+      [activeClient]: { ...prev[activeClient], incidents: updatedRows }
     }));
-    await persistRecord('productionIncidents', id, fullIncident);
   };
 
   const updateIncident = async (id, updatedFields) => {
-    const updated = { ...(currentClientData.incidents || []).find(item => item.id === id), ...updatedFields };
-    await persistRecord('productionIncidents', id, updated);
+    const updatedRows = (currentClientData.incidents || []).map(item => (
+      item.id === id ? { ...item, ...updatedFields } : item
+    ));
+    if (!await persistCategoryData('productionIncidents', updatedRows)) return;
     setData(prev => ({
       ...prev,
       [activeClient]: {
         ...prev[activeClient],
-        incidents: (prev[activeClient]?.incidents || []).map(item =>
-          item.id === id ? { ...item, ...updatedFields } : item
-        )
+        incidents: updatedRows
       }
     }));
   };
@@ -406,9 +420,14 @@ export const DataProvider = ({ children }) => {
   const deleteIncident = async (id) => {
     if (token) {
       try {
-        await apiRequest(`/api/specifications/${encodeURIComponent(id)}?client=${specificationClient}&category=productionIncidents`, { method: 'DELETE' });
+        const rows = currentClientData.incidents || [];
+        const rowIndex = rows.findIndex(item => item.id === id);
+        await apiRequest(`/api/specifications/${encodeURIComponent(id)}?client=${encodeURIComponent(specificationClient)}&category=productionIncidents&rowIndex=${rowIndex}`, { method: 'DELETE' });
         notify('success', 'Incident deleted.');
-      } catch (error) { notify('error', `Delete failed: ${error.message}`); }
+      } catch (error) {
+        notify('error', `Delete failed: ${error.message}`);
+        return;
+      }
     }
     setData(prev => ({
       ...prev,
